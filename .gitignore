@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Model / data caches
+.cache/
+models/
+*.apkg
+
+# OS
+.DS_Store
+Thumbs.db
