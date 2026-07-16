@@ -1,30 +1,36 @@
 # 🎙️ SpeakToDeck
 
-**Turn spoken English audio into translated Anki flashcards — mostly on free, local tooling.**
+**Turn spoken English audio — or pasted text — into translated Anki flashcards, mostly on free, local tooling.**
 
-Record or import audio, and SpeakToDeck transcribes it, splits it into sentences,
-translates each into a language you choose, adds native pronunciation audio, lets you
-accept/discard candidates, then pushes the deck straight into your open Anki app.
+Record or import audio (or just paste text), and SpeakToDeck transcribes it, splits it
+into sentences, translates each into a language you choose, adds native pronunciation
+audio, lets you accept/discard candidates, then pushes the deck straight into your open
+Anki app.
 
-```
-record / import audio
-  → transcribe        (faster-whisper, local, offline)
-  → split sentences   (wtpsplit SaT, or pysbd)
-  → translate         (deep-translator / Google free endpoint)
-  → pronunciation TTS  (NVIDIA Magpie neural TTS → edge-tts fallback)
-  → accept / discard   (curation UI)
-  → send to Anki       (AnkiConnect) — or download .apkg
+![SpeakToDeck demo](assets/demo.gif)
+
+```mermaid
+flowchart TD
+    A[🎤 Record / import audio] --> B[📝 Transcribe<br/>faster-whisper — local, offline]
+    P[📋 Paste text] -- skips transcription --> C
+    B --> C[✂️ Split sentences<br/>wtpsplit SaT → pysbd fallback]
+    C --> D[🌍 Translate<br/>deep-translator — 12 languages]
+    D --> E[🔊 Pronunciation TTS<br/>NVIDIA Magpie → edge-tts fallback]
+    E --> F[✅ Curate<br/>Accept / Discard → My cards]
+    F --> G[📤 Send to Anki<br/>AnkiConnect]
+    F --> H[⬇️ Download .apkg]
 ```
 
 ---
 
 ## ✨ Features
 
-- 🎙️ **Record or import** audio (WAV, MP3, M4A, WebM, OGG).
-- 🗣️ **Offline transcription** with faster-whisper — switch the Whisper model and compute
+- 🎙️ **Record or import** : audio (WAV, MP3, M4A, WebM, OGG).
+- 📋 **Paste text** : a text box that skips transcription and feeds to the pipeline
+- 🗣️ **Offline transcription** : faster-whisper; switch the Whisper model and compute
   type live from the sidebar.
-- ✂️ **Sentence splitting** via wtpsplit SaT, with a pysbd fallback.
-- 🌍 **Translate into 12 languages** — switch language anytime and cards re-translate in
+- ✂️ **Sentence splitting** : wtpsplit SaT, with a pysbd fallback.
+- 🌍 **Translate into 12 languages** : switch language anytime and cards re-translate in
   place, keeping your accept/discard choices.
 - 🔊 **Pronunciation audio** for every card: NVIDIA Magpie TTS (7 languages), with a free
   edge-tts fallback covering all 12.
@@ -52,13 +58,13 @@ record / import audio
 
 I'd been spending a lot of time studying languages on Anki, then came across a YouTube
 video arguing you should personalize your flashcards around what you actually talk about
-day-to-day — because that's what you end up saying anyway. That idea is what kicked off
+day-to-day because that's what you end up saying anyway. That idea is what kicked off
 SpeakToDeck.
 
 I built the pipeline first, which was also the hardest part. I wanted it **local and
 free**, so I researched and stitched together free, working services for each stage, then
 wrapped the whole thing in a Streamlit dashboard. The trickiest piece was tuning the
-Whisper model to transcribe speech accurately — `large-v3-turbo` turned out to be the
+Whisper model to transcribe speech accurately (large-v3-turbo) turned out to be the
 right pick. Two principles held throughout: **local & free first**, and **fallback-first**
 so no external dependency is a hard failure (SaT → pysbd, NVIDIA → edge-tts, AnkiConnect →
 `.apkg`).
@@ -113,8 +119,10 @@ Opens at <http://localhost:8501>.
 ### 4. Use it
 1. **⚙️ Settings** (sidebar): pick the language, splitter, TTS toggle, and (under **🧠
    Transcription model**) the Whisper model and compute type.
-2. **🎙️ Create** tab → **Add audio**: **Record** or **Import** a file.
-3. **Generate flashcards** to run the pipeline and list candidates.
+2. **🎙️ Create** tab → **Add audio**: **Record** or **Import** a file — or open
+   **📋 Or paste text** and paste any English text (skips transcription).
+3. **Generate flashcards** (or **Generate from text**) to run the pipeline and list
+   candidates.
 4. **✅ Accept** / **❌ Discard** each candidate (accepted ones move to **My cards**).
 5. **🗂️ My cards**: review with audio, **↩️ Remove** any you reconsider, name the deck,
    then **📤 Send to Anki** (or download the `.apkg`).
@@ -165,10 +173,6 @@ Change two settings live, per session, from the **🧠 Transcription model** exp
 - **Compute type** — `int8` (fastest) → `float32` (most accurate), with `int8_float32` in
   between.
 
-> **Apple Silicon / Mac:** faster-whisper runs on **CPU** on macOS (no GPU backend), so
-> compute type is your main accuracy dial — try `float32` for better transcripts. Options
-> are restricted to CPU-valid types (GPU-only types like `float16` would error on a Mac).
-
 </details>
 
 <details>
@@ -209,12 +213,3 @@ skipped (`pytest -m network` to include them).
 
 </details>
 
----
-
-## 🎬 Video demo
-
-`[TODO: embed your demo video here — e.g. a YouTube/Loom link or an uploaded GIF.]`
-
-<!--
-[![Watch the demo](TODO-thumbnail.png)](TODO-video-url)
--->

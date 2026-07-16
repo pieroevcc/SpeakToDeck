@@ -64,7 +64,6 @@ def _init_state() -> None:
     ss.setdefault("whisper_compute_type", config.WHISPER_COMPUTE_TYPE)
     ss.setdefault("use_tts", True)  # edge-tts needs no key, so audio is always available
     ss.setdefault("deck_name", config.DEFAULT_DECK_NAME)
-    ss.setdefault("apkg_bytes", None)
     ss.setdefault("recorder_key", 0)         # bump to reset the audio_input widget
 
 
@@ -111,7 +110,6 @@ def _clear_recording() -> None:
     st.session_state.recorder_key += 1
     st.session_state.sentences = []
     st.session_state.candidates = []
-    st.session_state.apkg_bytes = None
 
 
 def _retranslate() -> None:
@@ -142,7 +140,6 @@ def _retranslate() -> None:
         if c.english in prev_status:
             c.status = prev_status[c.english]
     st.session_state.candidates = cards
-    st.session_state.apkg_bytes = None
 
 
 # --- sidebar / settings (Request C) ------------------------------------------
@@ -222,7 +219,13 @@ def _text_pipeline(text: str) -> None:
     with st.status("Building flashcards…", expanded=True) as status:
         st.write("Splitting into sentences…")
         sentences = segment.split_sentences(text, backend=st.session_state.backend)
-        st.session_state.sentences = sentences
+        # Aggregate across runs: keep existing cards and only add sentences the
+        # session hasn't seen yet (re-generating the same input adds nothing).
+        sentences = [s for s in sentences if s not in st.session_state.sentences]
+        if not sentences:
+            status.update(label="No new sentences found", state="complete")
+            return
+        st.session_state.sentences = st.session_state.sentences + sentences
 
         st.write(f"Translating {len(sentences)} sentence(s) → {st.session_state.target_lang_label}…")
         results = translate.translate_sentences(sentences, code)
@@ -235,15 +238,14 @@ def _text_pipeline(text: str) -> None:
                 if result:
                     audio_list[i], audio_ext_list[i] = result
 
-        st.session_state.candidates = flashcards.build_candidates(
+        st.session_state.candidates = st.session_state.candidates + flashcards.build_candidates(
             english=[r.source for r in results],
             translations=[r.text for r in results],
             audio=audio_list,
             audio_ext=audio_ext_list,
             translation_ok=[r.ok for r in results],
         )
-        st.session_state.apkg_bytes = None
-        status.update(label=f"Created {len(results)} candidate card(s)", state="complete")
+        status.update(label=f"Added {len(results)} candidate card(s)", state="complete")
 
     # Rerun so the freshly-built candidates render this pass (the tab bodies and
     # card counts were already computed from session state earlier in the script).
@@ -359,7 +361,6 @@ with tab_cards:
                 _render_card_body(card)
                 if st.button("↩️ Remove", key=f"rm_{card.id}"):
                     card.status = "pending"
-                    st.session_state.apkg_bytes = None
                     st.rerun()
 
         st.divider()
@@ -368,7 +369,8 @@ with tab_cards:
             "Deck name", value=st.session_state.deck_name
         )
 
-        if st.button("📤 Send to Anki", type="primary"):
+        b_send, b_download = st.columns(2)
+        if b_send.button("📤 Send to Anki", type="primary", use_container_width=True):
             try:
                 added = anki_connect.push_cards(accepted_cards, st.session_state.deck_name)
                 st.toast(f"📤 Deck sent to Anki — '{st.session_state.deck_name}'!", icon="✅")
@@ -379,21 +381,13 @@ with tab_cards:
                 st.balloons()
             except anki_connect.AnkiConnectError as exc:
                 st.error(f"{exc}")
-                st.info("Use the .apkg download below instead.")
-                st.session_state.apkg_bytes = anki_export.export_deck(
-                    accepted_cards, st.session_state.deck_name
-                )
-
-        if st.session_state.apkg_bytes is None:
-            if st.button("Build .apkg download"):
-                st.session_state.apkg_bytes = anki_export.export_deck(
-                    accepted_cards, st.session_state.deck_name
-                )
-
-        if st.session_state.apkg_bytes:
-            st.download_button(
-                "⬇️ Download .apkg",
-                data=st.session_state.apkg_bytes,
-                file_name=f"{st.session_state.deck_name}.apkg",
-                mime="application/octet-stream",
-            )
+                st.info("Use **⬇️ Download .apkg** instead.")
+        b_download.download_button(
+            "⬇️ Download .apkg",
+            # Rebuilt on rerun so it always matches the current cards — cheap,
+            # since the audio bytes are already in memory (no TTS calls).
+            data=anki_export.export_deck(accepted_cards, st.session_state.deck_name),
+            file_name=f"{st.session_state.deck_name}.apkg",
+            mime="application/octet-stream",
+            use_container_width=True,
+        )
