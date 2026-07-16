@@ -91,11 +91,12 @@ def test_anki_error_raises(monkeypatch):
         anki_connect.push_cards(cards, "D")
 
 
-def test_is_available_false_on_connection_error(monkeypatch):
+def test_status_false_on_connection_error(monkeypatch):
     def boom(*a, **k):
         raise OSError("connection refused")
 
     import requests
 
     monkeypatch.setattr(requests, "post", boom)
-    assert anki_connect.is_available() is False
+    connected, _msg = anki_connect.status()
+    assert connected is False

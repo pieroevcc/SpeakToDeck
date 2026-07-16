@@ -70,11 +70,6 @@ def status() -> tuple[bool, str]:
         )
 
 
-def is_available() -> bool:
-    """True if AnkiConnect responds and a collection is loaded."""
-    return status()[0]
-
-
 def _media_filename(card: Candidate) -> str:
     return f"speaktodeck_{card.id}.{card.audio_ext}"
 

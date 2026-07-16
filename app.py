@@ -62,7 +62,7 @@ def _init_state() -> None:
     ss.setdefault("backend", config.SENTENCE_BACKEND)
     ss.setdefault("whisper_model", config.WHISPER_MODEL)
     ss.setdefault("whisper_compute_type", config.WHISPER_COMPUTE_TYPE)
-    ss.setdefault("use_tts", tts.is_enabled())
+    ss.setdefault("use_tts", True)  # edge-tts needs no key, so audio is always available
     ss.setdefault("deck_name", config.DEFAULT_DECK_NAME)
     ss.setdefault("apkg_bytes", None)
     ss.setdefault("recorder_key", 0)         # bump to reset the audio_input widget
@@ -215,24 +215,11 @@ with st.sidebar:
 st.title("🎙️ SpeakToDeck")
 st.caption("Speak or import English audio → translated Anki flashcards.")
 
-def _run_pipeline(audio) -> None:
-    suffix = "." + (getattr(audio, "name", "audio.wav").rsplit(".", 1)[-1])
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(audio.getvalue())
-        tmp_path = tmp.name
-
+def _text_pipeline(text: str) -> None:
+    """Everything after transcription: split → translate → TTS → candidates.
+    Shared by the audio path and the paste-text path."""
     code = _target_code()
     with st.status("Building flashcards…", expanded=True) as status:
-        st.write(f"Transcribing audio (Whisper · {st.session_state.whisper_model})…")
-        text = transcribe.transcribe_audio(
-            tmp_path,
-            model=st.session_state.whisper_model,
-            compute_type=st.session_state.whisper_compute_type,
-        )
-        if not text.strip():
-            status.update(label="No speech detected", state="error")
-            return
-
         st.write("Splitting into sentences…")
         sentences = segment.split_sentences(text, backend=st.session_state.backend)
         st.session_state.sentences = sentences
@@ -261,6 +248,40 @@ def _run_pipeline(audio) -> None:
     # Rerun so the freshly-built candidates render this pass (the tab bodies and
     # card counts were already computed from session state earlier in the script).
     st.rerun()
+
+
+def _run_pipeline(audio) -> None:
+    suffix = "." + (getattr(audio, "name", "audio.wav").rsplit(".", 1)[-1])
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(audio.getvalue())
+        tmp_path = tmp.name
+
+    with st.spinner(f"Transcribing audio (Whisper · {st.session_state.whisper_model})…"):
+        text = transcribe.transcribe_audio(
+            tmp_path,
+            model=st.session_state.whisper_model,
+            compute_type=st.session_state.whisper_compute_type,
+        )
+    if not text.strip():
+        st.error("No speech detected")
+        return
+    _text_pipeline(text)
+
+
+def _render_card_body(card) -> None:
+    """English + translation + audio player — shared by both card lists."""
+    st.markdown(f"**{card.english}**")
+    if card.translation_ok:
+        st.markdown(f":blue[{card.translation}]")
+    else:
+        st.markdown(
+            f":orange[{card.translation}] _(translation failed — kept English)_"
+        )
+    if card.audio:
+        st.audio(
+            card.audio,
+            format="audio/wav" if card.audio_ext == "wav" else "audio/mpeg",
+        )
 
 
 candidates = st.session_state.candidates
@@ -294,6 +315,19 @@ with tab_create:
         _clear_recording()
         st.rerun()
 
+    with st.expander("📋 Or paste text instead"):
+        pasted = st.text_area(
+            "Text to turn into cards",
+            placeholder="Paste English text — it skips transcription and goes "
+            "straight to sentence splitting.",
+            label_visibility="collapsed",
+        )
+        if st.button(
+            "Generate from text", type="primary", disabled=not pasted.strip(),
+            use_container_width=True,
+        ):
+            _text_pipeline(pasted)
+
     if candidates:
         pending = [c for c in candidates if c.status == "pending"]
         st.subheader("2. Review candidates")
@@ -304,18 +338,7 @@ with tab_create:
             st.success("All candidates reviewed — see the **My cards** tab.")
         for card in pending:
             with st.container(border=True):
-                st.markdown(f"**{card.english}**")
-                if card.translation_ok:
-                    st.markdown(f":blue[{card.translation}]")
-                else:
-                    st.markdown(
-                        f":orange[{card.translation}] _(translation failed — kept English)_"
-                    )
-                if card.audio:
-                    st.audio(
-                        card.audio,
-                        format="audio/wav" if card.audio_ext == "wav" else "audio/mpeg",
-                    )
+                _render_card_body(card)
                 b_accept, b_discard = st.columns(2)
                 if b_accept.button("✅ Accept", key=f"a_{card.id}", use_container_width=True):
                     card.status = "accepted"
@@ -333,18 +356,7 @@ with tab_cards:
         st.caption(f"{len(accepted_cards)} card(s) ready.")
         for card in accepted_cards:
             with st.container(border=True):
-                st.markdown(f"**{card.english}**")
-                if card.translation_ok:
-                    st.markdown(f":blue[{card.translation}]")
-                else:
-                    st.markdown(
-                        f":orange[{card.translation}] _(translation failed — kept English)_"
-                    )
-                if card.audio:
-                    st.audio(
-                        card.audio,
-                        format="audio/wav" if card.audio_ext == "wav" else "audio/mpeg",
-                    )
+                _render_card_body(card)
                 if st.button("↩️ Remove", key=f"rm_{card.id}"):
                     card.status = "pending"
                     st.session_state.apkg_bytes = None

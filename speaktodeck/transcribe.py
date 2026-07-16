@@ -73,7 +73,6 @@ def preload(
 
 def transcribe_audio(
     path: str,
-    language: str = "en",
     *,
     model: str | None = None,
     device: str | None = None,
@@ -104,7 +103,7 @@ def transcribe_audio(
     )
     segments, _info = whisper.transcribe(
         path,
-        language=language,
+        language="en",
         beam_size=config.WHISPER_BEAM_SIZE,
         vad_filter=True,
         initial_prompt=config.WHISPER_INITIAL_PROMPT,

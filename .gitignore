@@ -18,3 +18,9 @@ models/
 # OS
 .DS_Store
 Thumbs.db
+
+# Deck production (local product files, not app source)
+data/
+out/
+scripts/
+docs/

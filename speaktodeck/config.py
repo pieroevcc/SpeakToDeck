@@ -103,8 +103,3 @@ EDGE_TTS_VOICES: dict[str, str] = {
     "hi": "hi-IN-SwaraNeural",
     "nl": "nl-NL-ColetteNeural",
 }
-
-
-def voice_for(lang_code: str) -> str | None:
-    """Return the edge-tts voice for ``lang_code``, or None if unsupported."""
-    return EDGE_TTS_VOICES.get(lang_code)

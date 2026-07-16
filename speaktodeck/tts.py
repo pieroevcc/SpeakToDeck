@@ -36,11 +36,6 @@ log = logging.getLogger(__name__)
 _MAX_WORKERS = 6
 
 
-def is_enabled() -> bool:
-    """True if pronunciation audio can be produced (edge-tts needs no key)."""
-    return True
-
-
 def nvidia_is_enabled() -> bool:
     """True when an NVIDIA API key is set, so the NVIDIA TTS engine can run."""
     return bool(os.environ.get("NVIDIA_API_KEY"))
@@ -118,7 +113,7 @@ async def _stream_mp3(text: str, voice: str) -> bytes:
 
 def _synthesize_edge(text: str, lang: str) -> tuple[bytes, str] | None:
     """Synthesize via edge-tts. Returns ``(mp3_bytes, "mp3")`` or None."""
-    voice = config.voice_for(lang)
+    voice = config.EDGE_TTS_VOICES.get(lang)
     if not voice:
         return None
 
