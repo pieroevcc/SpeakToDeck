@@ -8,6 +8,7 @@ constructed once per process. Weights are downloaded once into a project-local
 from __future__ import annotations
 
 import os
+from datetime import date
 from functools import lru_cache
 
 from . import config
@@ -57,6 +58,29 @@ def groq_is_enabled() -> bool:
     return bool(os.environ.get("GROQ_API_KEY"))
 
 
+class TranscriptionLimitError(RuntimeError):
+    """Raised when the daily Groq transcription budget is spent."""
+
+
+# Daily cap on Groq calls so a public demo can't burn through the key.
+# ponytail: in-memory counter — resets on process restart; move to a store if
+# the demo ever needs a hard guarantee.
+_groq_calls = {"day": None, "n": 0}
+
+
+def _check_groq_budget() -> None:
+    limit = int(os.environ.get("GROQ_DAILY_LIMIT", "5"))
+    today = date.today()
+    if _groq_calls["day"] != today:
+        _groq_calls.update(day=today, n=0)
+    if _groq_calls["n"] >= limit:
+        raise TranscriptionLimitError(
+            f"Daily transcription limit reached ({limit}/day on this demo). "
+            "Paste text instead — it skips transcription — or run the app locally."
+        )
+    _groq_calls["n"] += 1
+
+
 def _transcribe_groq(path: str) -> str:
     """Transcribe via Groq's hosted Whisper (OpenAI-compatible endpoint).
 
@@ -65,6 +89,7 @@ def _transcribe_groq(path: str) -> str:
     """
     import requests
 
+    _check_groq_budget()
     with open(path, "rb") as fh:
         resp = requests.post(
             config.GROQ_TRANSCRIBE_URL,

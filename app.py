@@ -260,12 +260,16 @@ def _run_pipeline(audio) -> None:
         tmp.write(audio.getvalue())
         tmp_path = tmp.name
 
-    with st.spinner(f"Transcribing audio (Whisper · {st.session_state.whisper_model})…"):
-        text = transcribe.transcribe_audio(
-            tmp_path,
-            model=st.session_state.whisper_model,
-            compute_type=st.session_state.whisper_compute_type,
-        )
+    try:
+        with st.spinner(f"Transcribing audio (Whisper · {st.session_state.whisper_model})…"):
+            text = transcribe.transcribe_audio(
+                tmp_path,
+                model=st.session_state.whisper_model,
+                compute_type=st.session_state.whisper_compute_type,
+            )
+    except transcribe.TranscriptionLimitError as exc:
+        st.error(str(exc))
+        return
     if not text.strip():
         st.error("No speech detected")
         return

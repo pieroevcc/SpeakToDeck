@@ -1,11 +1,15 @@
 # 🎙️ SpeakToDeck
 
-**Turn spoken English audio — or pasted text — into translated Anki flashcards, mostly on free, local tooling.**
+**Turn spoken English audio or text into translated Anki flashcards, free with local tooling.**
 
 Record or import audio (or just paste text), and SpeakToDeck transcribes it, splits it
 into sentences, translates each into a language you choose, adds native pronunciation
 audio, lets you accept/discard candidates, then pushes the deck straight into your open
 Anki app.
+
+**[▶️ Try the live demo](https://speaktodeck.streamlit.app)** — hosted on Streamlit Cloud
+(transcription via Groq, capped at 5 clips/day; pronunciation audio and Send-to-Anki need
+a local run — grab your deck with ⬇️ Download .apkg).
 
 ![SpeakToDeck demo](assets/demo.gif)
 

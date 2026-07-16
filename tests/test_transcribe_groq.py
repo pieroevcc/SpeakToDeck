@@ -36,6 +36,22 @@ def test_groq_branch_posts_file_and_normalizes(monkeypatch, tmp_path):
     assert captured["files"]["file"][0] == "clip.mp3"
 
 
+def test_daily_limit_blocks_sixth_call(monkeypatch):
+    from datetime import date, timedelta
+
+    import pytest
+
+    monkeypatch.setitem(transcribe._groq_calls, "day", None)
+    monkeypatch.setitem(transcribe._groq_calls, "n", 0)
+    for _ in range(5):
+        transcribe._check_groq_budget()
+    with pytest.raises(transcribe.TranscriptionLimitError):
+        transcribe._check_groq_budget()
+    # a new day resets the budget
+    monkeypatch.setitem(transcribe._groq_calls, "day", date.today() - timedelta(days=1))
+    transcribe._check_groq_budget()  # must not raise
+
+
 def test_no_key_means_local_path(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
     assert transcribe.groq_is_enabled() is False
