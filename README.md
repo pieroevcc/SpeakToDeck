@@ -7,18 +7,18 @@ into sentences, translates each into a language you choose, adds native pronunci
 audio, lets you accept/discard candidates, then pushes the deck straight into your open
 Anki app.
 
-**[▶️ Try the live demo](https://speaktodeck.streamlit.app)** — hosted on Streamlit Cloud
+**[▶️ Try the live demo](https://speaktodeck.streamlit.app)**, hosted on Streamlit Cloud
 (transcription via Groq, capped at 5 clips/day; pronunciation audio and Send-to-Anki need
-a local run — grab your deck with ⬇️ Download .apkg).
+a local run; grab your deck with ⬇️ Download .apkg).
 
 ![SpeakToDeck demo](assets/demo.gif)
 
 ```mermaid
 flowchart TD
-    A[🎤 Record / import audio] --> B[📝 Transcribe<br/>faster-whisper — local, offline]
+    A[🎤 Record / import audio] --> B[📝 Transcribe<br/>faster-whisper, local, offline]
     P[📋 Paste text] -- skips transcription --> C
     B --> C[✂️ Split sentences<br/>wtpsplit SaT → pysbd fallback]
-    C --> D[🌍 Translate<br/>deep-translator — 12 languages]
+    C --> D[🌍 Translate<br/>deep-translator, 12 languages]
     D --> E[🔊 Pronunciation TTS<br/>NVIDIA Magpie → edge-tts fallback]
     E --> F[✅ Curate<br/>Accept / Discard → My cards]
     F --> G[📤 Send to Anki<br/>AnkiConnect]
@@ -77,20 +77,20 @@ so no external dependency is a hard failure (SaT → pysbd, NVIDIA → edge-tts,
 
 ## 📚 What I learned
 
-- **Streamlit reruns the whole script on every interaction** — so the real work is caching
+- **Streamlit reruns the whole script on every interaction**, so the real work is caching
   the right things (`session_state` for transcripts/candidates, `@lru_cache` for models).
-- **Out-of-the-box Whisper needs tuning for speech** — VAD, a punctuated priming prompt,
+- **Out-of-the-box Whisper needs tuning for speech**: VAD, a punctuated priming prompt,
   and cross-segment context made a big difference.
-- **Design for graceful degradation** — treating every network call as fallible and
+- **Design for graceful degradation**: treating every network call as fallible and
   degrading per-item, not per-run, made the app far more robust.
-- **Keep orchestration thin** — pushing logic into modules made the pipeline easy to test
+- **Keep orchestration thin**: pushing logic into modules made the pipeline easy to test
   offline.
 
 ---
 
 ## 🚀 How it could be improved
 
-- **Cut button latency.** Every click reruns the whole Streamlit script — the main source
+- **Cut button latency.** Every click reruns the whole Streamlit script, the main source
   of lag. Wrapping curation in **`st.fragment`** so only that region re-runs would make it
   feel near-instant.
 - **Cache TTS & translation** by `(text, language)`, so switching language or voice is
@@ -123,7 +123,7 @@ Opens at <http://localhost:8501>.
 ### 4. Use it
 1. **⚙️ Settings** (sidebar): pick the language, splitter, TTS toggle, and (under **🧠
    Transcription model**) the Whisper model and compute type.
-2. **🎙️ Create** tab → **Add audio**: **Record** or **Import** a file — or open
+2. **🎙️ Create** tab → **Add audio**: **Record** or **Import** a file, or open
    **📋 Or paste text** and paste any English text (skips transcription).
 3. **Generate flashcards** (or **Generate from text**) to run the pipeline and list
    candidates.
@@ -132,7 +132,7 @@ Opens at <http://localhost:8501>.
    then **📤 Send to Anki** (or download the `.apkg`).
 
 <details>
-<summary><b>Send to Anki — set up AnkiConnect</b></summary>
+<summary><b>Send to Anki: set up AnkiConnect</b></summary>
 
 1. Install [Anki desktop](https://apps.ankiweb.net/).
 2. In Anki: **Tools → Add-ons → Get Add-ons…** and enter code **`2055492159`**.
@@ -144,15 +144,15 @@ Opens at <http://localhost:8501>.
 </details>
 
 <details>
-<summary><b>Pronunciation audio — enable NVIDIA Magpie (optional)</b></summary>
+<summary><b>Pronunciation audio: enable NVIDIA Magpie (optional)</b></summary>
 
 Cards carry pronunciation audio from one of two engines (toggle in the sidebar):
 
-- **Primary — NVIDIA Magpie TTS.** Hosted neural voices over Riva gRPC
+- **Primary: NVIDIA Magpie TTS.** Hosted neural voices over Riva gRPC
   (`nvidia-riva-client`), authenticated with your `NVIDIA_API_KEY`. Covers Spanish,
   French, German, Italian, Mandarin, Hindi, Japanese; voices live in
   [`speaktodeck/config.py`](speaktodeck/config.py) (`NVIDIA_TTS_VOICES`).
-- **Fallback — [`edge-tts`](https://github.com/rany2/edge-tts).** Free, key-less Edge
+- **Fallback: [`edge-tts`](https://github.com/rany2/edge-tts).** Free, key-less Edge
   voices covering **every** language (`EDGE_TTS_VOICES`). Used when no NVIDIA key is set,
   the language isn't in Magpie's set, or an NVIDIA call fails.
 
@@ -161,7 +161,7 @@ Set your key in `.env` (copy from `.env.example`) to enable NVIDIA:
 NVIDIA_API_KEY=nvapi-...
 ```
 
-> TTS is **best-effort** and needs internet. Failures degrade gracefully — NVIDIA falls
+> TTS is **best-effort** and needs internet. Failures degrade gracefully: NVIDIA falls
 > back to edge-tts, and an edge-tts failure just creates the card without audio.
 
 </details>
@@ -171,10 +171,10 @@ NVIDIA_API_KEY=nvapi-...
 
 Change two settings live, per session, from the **🧠 Transcription model** expander:
 
-- **Whisper model** — `tiny.en` → `large-v3`. Larger is more accurate but slower and a
+- **Whisper model**: `tiny.en` → `large-v3`. Larger is more accurate but slower and a
   bigger download; `.en` models are English-only. Switching reloads on the next run.
   Defaults live in `config.py` (`WHISPER_MODEL`, `WHISPER_MODEL_CHOICES`).
-- **Compute type** — `int8` (fastest) → `float32` (most accurate), with `int8_float32` in
+- **Compute type**: `int8` (fastest) → `float32` (most accurate), with `int8_float32` in
   between.
 
 </details>
@@ -209,7 +209,7 @@ skipped (`pytest -m network` to include them).
   "unauthenticated requests to the HF Hub" line during the download is harmless.)
 - `deep-translator` uses Google's free endpoint (rate-limited); `argostranslate` is a
   fully-offline alternative if it breaks.
-- Larger Whisper models are more accurate but slower and a bigger download — drop to a
+- Larger Whisper models are more accurate but slower and a bigger download; drop to a
   smaller one (`WHISPER_MODEL` in `config.py`) if you need speed.
 - NVIDIA Magpie TTS covers 7 languages (Spanish, French, German, Italian, Mandarin, Hindi,
   Japanese); the rest (Portuguese, Korean, Russian, Arabic, Dutch) use edge-tts. No key →
