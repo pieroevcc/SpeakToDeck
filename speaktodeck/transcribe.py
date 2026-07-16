@@ -52,6 +52,35 @@ def _get_model(model: str, device: str, compute_type: str):
     return WhisperModel(_resolve_model(model), device=device, compute_type=compute_type)
 
 
+def groq_is_enabled() -> bool:
+    """True when a Groq API key is set, so transcription is remote (no local model)."""
+    return bool(os.environ.get("GROQ_API_KEY"))
+
+
+def _transcribe_groq(path: str) -> str:
+    """Transcribe via Groq's hosted Whisper (OpenAI-compatible endpoint).
+
+    Raises on failure — with a key set the user asked for the remote path, and
+    a silent local fallback would load a multi-GB model on hosts that can't.
+    """
+    import requests
+
+    with open(path, "rb") as fh:
+        resp = requests.post(
+            config.GROQ_TRANSCRIBE_URL,
+            headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}"},
+            files={"file": (os.path.basename(path), fh)},
+            data={
+                "model": config.GROQ_WHISPER_MODEL,
+                "language": "en",
+                "prompt": config.WHISPER_INITIAL_PROMPT,
+            },
+            timeout=120,
+        )
+    resp.raise_for_status()
+    return " ".join(resp.json().get("text", "").split())
+
+
 def preload(
     *,
     model: str | None = None,
@@ -63,7 +92,11 @@ def preload(
     Called at app startup (in a background thread) so the first real
     transcription isn't paying the model-load cost. Safe to call repeatedly —
     ``_get_model`` is ``lru_cache``-d, so subsequent calls are no-ops.
+    No-op when Groq handles transcription (loading a local model would OOM
+    small hosts and waste RAM everywhere else).
     """
+    if groq_is_enabled():
+        return
     _get_model(
         model or config.WHISPER_MODEL,
         device or config.WHISPER_DEVICE,
@@ -95,7 +128,13 @@ def transcribe_audio(
 
     ``model``/``device``/``compute_type`` override the config defaults (the UI
     exposes the first and last so users can trade speed for accuracy).
+
+    With ``GROQ_API_KEY`` set, transcription goes to Groq's hosted Whisper
+    instead (no local model, fast, ~zero RAM) — same idiom as the NVIDIA →
+    edge-tts pair in ``tts.py``.
     """
+    if groq_is_enabled():
+        return _transcribe_groq(path)
     whisper = _get_model(
         model or config.WHISPER_MODEL,
         device or config.WHISPER_DEVICE,

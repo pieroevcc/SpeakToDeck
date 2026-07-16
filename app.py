@@ -37,6 +37,10 @@ import tempfile
 import streamlit as st
 from dotenv import load_dotenv
 
+# Load .env before speaktodeck imports: config reads SENTENCE_BACKEND from the
+# environment at import time, and the API keys (GROQ/NVIDIA) live here too.
+load_dotenv()
+
 from speaktodeck import (
     anki_connect,
     anki_export,
@@ -47,8 +51,6 @@ from speaktodeck import (
     translate,
     tts,
 )
-
-load_dotenv()  # pick up NVIDIA_API_KEY from .env if present
 
 st.set_page_config(page_title="SpeakToDeck", page_icon="🎙️", layout="centered")
 

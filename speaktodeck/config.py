@@ -6,6 +6,8 @@ endpoints here. Nothing in this module performs I/O at import time.
 
 from __future__ import annotations
 
+import os
+
 # --- Transcription (faster-whisper) ------------------------------------------
 # "small.en" is an English-only model: more accurate than the multilingual
 # "base" at a similar size, with cleaner punctuation (which drives sentence
@@ -36,10 +38,18 @@ WHISPER_MODEL_CHOICES = [
 # int8 = fastest/smallest, float32 = most accurate/slowest, int8_float32 between.
 WHISPER_COMPUTE_TYPE_CHOICES = ["int8", "int8_float32", "float32"]
 
+# --- Transcription: Groq API (optional, replaces local Whisper) ---------------
+# When GROQ_API_KEY is set, transcription goes to Groq's hosted Whisper instead
+# of loading a local model — required on small hosts (Streamlit Cloud ~1 GB RAM)
+# and much faster everywhere. No key -> local faster-whisper, unchanged.
+GROQ_TRANSCRIBE_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+GROQ_WHISPER_MODEL = "whisper-large-v3-turbo"
+
 # --- Sentence segmentation ----------------------------------------------------
 # "sat"  -> wtpsplit SaT model (neural, punctuation-agnostic, best for speech)
 # "pysbd"-> rule-based, zero download, fast (best when text is well punctuated)
-SENTENCE_BACKEND = "sat"
+# Env-overridable so small hosts can force pysbd (SaT pulls in torch, ~1 GB RAM).
+SENTENCE_BACKEND = os.environ.get("SENTENCE_BACKEND", "sat")
 SAT_MODEL = "sat-3l-sm"
 
 # --- Translation target languages (label -> ISO code used by deep-translator) -
